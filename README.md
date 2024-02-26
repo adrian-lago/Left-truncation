@@ -38,8 +38,6 @@ lb.estimator.mod <- function(sample){
     j <- j+1
   }
   
-  # ni[length(dist.fail)] <- 1
-  
   cum.prod <- c(1,cumprod(1-di/ni))
   
   for (i in 1:length(dist.fail) ){
@@ -105,12 +103,12 @@ ks.stat <- function(sample1,sample2,rep=F){ # rep = T o F para representar o no
   statistic <- max(abs(eval1-eval2)) # statistic
   tt1 <- tt2 <- tt12 <- 0
   
-  # agujeros
+  
   #for (i in 1:(length(nodos1)-1)){if(widehat.s1[i]==0){tt1 <- min(which(widehat.s1==0))}}
   #for (i in 1:(length(nodos2)-1)){if(widehat.s2[i]==0){tt2 <- min(which(widehat.s2==0))}}
   #if (tt1 != 0 & tt2 != 0){tt12 <- min(tt1,tt2)}
   
-  # representacion si rep=T
+  
   if (rep==T){
     plot(nodos,eval1,type='s',lwd=2,ylim=c(-0.1,1.1),col='firebrick3',xlab='t',ylab='Estimated survival functions',main='')
     points(nodos,eval2,type='s',lwd=2,col='forestgreen' )
@@ -129,7 +127,7 @@ sim.exp <- function(n,prob=0.5,lambda=1,umin=0,umax=1,eps=0){
       x[i] <- rexp(1,rate=lambda) + eps
     }
   }
-  # ord <- sort(x,index.return=T)
+
   return( data.frame('truncation'=u,'times'=x,'group'=z) )
 }
 
@@ -283,8 +281,8 @@ exp.exp <- function(n,prob=0.5,lambda.x=1,lambda.u=1){
 }
 
 
-#### p-value for Kolmogorov-Smirnov ####
-# sample = (truncation, t.to event)
+#### p-value for Kolmogorov-Smirnov; sample = (truncation, t.to event) ####
+
 ks.pv <- function(s0.0,s1.0,B=200,rep=F){
   
   n <- nrow(s0.0); m <- nrow(s1.0)
@@ -309,8 +307,7 @@ ks.pv <- function(s0.0,s1.0,B=200,rep=F){
   
   trunc0 <- -est.trunc0$fail.time
   trunc1 <- -est.trunc1$fail.time
-  
-  ## bootstrap
+
   stat <- numeric(B)
   for (b in 1:B){ 
     sample0 <- data.frame( sample(trunc0,size=n,replace=T,prob=prob0.trunc),
@@ -337,7 +334,6 @@ ks.pv <- function(s0.0,s1.0,B=200,rep=F){
     
   } # fin del bootstrap 
   
-  # p-valor 
   pv <- mean(stat >= stat0)
   
   return( list( 'statistic'= stat0,'p.value'= pv, 'boot.stat'= stat) )
@@ -345,7 +341,6 @@ ks.pv <- function(s0.0,s1.0,B=200,rep=F){
 
 
 #### log-rank ####
-# muestra = (truncation,t. to event)
 log.rank <- function(p.sample,correction=F){
   
   times <- unique(p.sample[,2])
@@ -380,11 +375,7 @@ log.rank <- function(p.sample,correction=F){
     }
   }
   
-  # corrector <- 1
-  # if (correction==T){
-  #   corrector <- (ni-di)/(ni-1) # va a valer 1 siempre que no haya empates
-  #   corrector[which(is.na(corrector))] <- 1
-  # }
+ 
   
   statistic <- Z %*% solve(varcov) %*% Z
   
@@ -392,9 +383,9 @@ log.rank <- function(p.sample,correction=F){
   return(list('statistic'=statistic,'p.value'=pvalue))
   
 }
-#### test for independence (from Tsai(1990)) ####
-# sample = (truncation times, event times)
-# H0: U y X independientes
+
+#### test for independence (from Tsai, 1990) ####
+
 indep <- function(sample){
   n <- nrow(sample)
   r <- s <- numeric(n)
@@ -413,7 +404,7 @@ indep <- function(sample){
 }
 
 #### linear transformation of the truncation times (Chiou et al. (2019))####
-# data = (left truncation, times to event, ... )
+
 trans.lin <- function(data,plots=F,cor=F){
   if (cor==T){
     a <- -cor(data[,1],data[,2])*sd(data[,1])/sd(data[,2])
@@ -425,37 +416,6 @@ trans.lin <- function(data,plots=F,cor=F){
   return(data)
 }
 
-#### left truncation and right censorship ####
-ltrc.estimator <- function(sample){
-  
-  dist.fail <- unique(sample[,2])
-  di <- ni <- prob <- numeric( length(dist.fail) )
-  j <- 1
-  
-  for (t in sort(dist.fail)) {
-    di[j] <- sum( sample[,2] == t  & sample[,3] == 1)
-    ni[j] <- sum( sample[,1] <= t & t <= sample[,2]  )
-    j <- j+1
-  }
-  
-  cum.prod <- c(1,cumprod( (1-di/ni)^(sample[,3]) ))
-  
-  for (i in 1:length(dist.fail) ){
-    prob[i] <- cum.prod[i]-cum.prod[i+1]
-  }
-  
-  lista <- list('fail.time'= sort( dist.fail ) , 'estimation'= cumprod(1-di/ni),
-                'prob'=prob)
-  return(lista)
-}
-
-simulacion.ltrc <- function(n,prob=0.5,lambda=1,beta=0,umin=0,umax=1,c.min=1,c.max=2.5){
-  lt.sample <- simulacion.x(n,prob=0.5,lambda=1,beta=0,umin=0,umax=1)
-  censoring.times <- runif(n,c.min,c.max)
-  sample <- data.frame( 'truncation'=lt.sample[,1], 'observed time'=min(lt.sample[,2],censoring.times), 
-                        'indicator'=ifelse(lt.sample[,2] <= censoring.times,1,0),'group'=lt.sample[,3] )
-  return(sample)
-}
 #### statistic based on density estimators ####
 depa <- function(x){ 0.75*(1-x^2)*(abs(x) <= 1)}
 
@@ -535,11 +495,8 @@ stat.int3 <- function(sample,H,weights){
   
   ind <- unique(sample[,3])
   K <- length(ind) # es 3
-  # aux <- numeric(K)
   N <- numeric(K)
-  
-  # para 3 muestras
-  
+    
   #M1
   sub.s <- sample[sample[,3]==ind[1],]
   est <- lb.estimator.mod(sub.s)
@@ -563,22 +520,12 @@ stat.int3 <- function(sample,H,weights){
   
   n <- sum(N)
   
-  # p <- numeric(3)
-  # if (weights==NULL){
-  #   p[1] <- n1/n
-  #   p[2] <- n2/n
-  #   p[3] <- n3/n
-  # } else{
-  #   p <- weights
-  # }
-  
   p <- weights
   
   h1 <- H[1]; h2 <- H[2]; h3 <- H[3]
   p1 <- p[1]; p2 <- p[2]; p3 <- p[3]
   
-  # para primera muestra (j=1)
-  
+ 
   statistic <- N[1]/n * integrate(Vectorize(fun_integrate3,vectorize.args='x'), lower = -Inf, upper = Inf, x1, omega1, 
                                   x2, omega2,x3, omega3,h1,h2,h3,p1,p2,p3,subdivisions=2000,rel.tol=1e-6)$value+
     N[2]/n * integrate(Vectorize(fun_integrate3,vectorize.args='x'), lower = -Inf, upper = Inf, x2, omega2, 
@@ -598,11 +545,8 @@ stat.int2 <- function(sample,H,weights){
   
   ind <- unique(sample[,3])
   K <- length(ind) # es 3
-  # aux <- numeric(K)
   N <- numeric(K)
-  
-  # para 3 muestras
-  
+    
   #M1
   sub.s <- sample[sample[,3]==ind[1],]
   est <- lb.estimator.mod(sub.s)
@@ -623,9 +567,7 @@ stat.int2 <- function(sample,H,weights){
   
   h1 <- H[1]; h2 <- H[2]
   p1 <- p[1]; p2 <- p[2]
-  
-  # para primera muestra (j=1)
-  
+    
   statistic <- N[1]/n * integrate(Vectorize(fun_integrate2,vectorize.args='x'), lower = -Inf, upper = Inf, x1, omega1, 
                                   x2, omega2,h1,h2,p1,p2,rel.tol=1e-6,subdivisions=2000)$value+
     N[2]/n * integrate(Vectorize(fun_integrate2,vectorize.args='x'), lower = -Inf, upper = Inf, x2, omega2, 
